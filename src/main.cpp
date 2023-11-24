@@ -4,12 +4,14 @@
 #include <ESP8266WiFi.h>
 #include <uri/UriBraces.h>
 
+#define BAUD 9600
+#define LED D4
+#define HTTP_REST_PORT 8080
+
 const char *ssid = "NOWTVFGNGD";
 const char *password = "3Yd4TIIbcXv9";
 
 WiFiClient client;
-
-#define HTTP_REST_PORT 8080
 ESP8266WebServer server(HTTP_REST_PORT);
 
 void connect_to_wifi () {
@@ -36,8 +38,11 @@ void connect_to_wifi () {
 }
 
 void setup () {
-  Serial.begin(115200);
+  Serial.begin(BAUD);
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);
   connect_to_wifi();
+  digitalWrite(LED, LOW);
   server.on(
     "/",
     HTTP_GET,
@@ -76,7 +81,48 @@ void setup () {
     }
   );
 
+  server.on(
+    UriBraces("/api/status"),
+    HTTP_POST,
+    []() {
+      digitalWrite(LED, LOW);
+      StaticJsonDocument<20> doc;
+
+      doc["status"] = "true";
+
+      String response = "";
+      serializeJson(doc, response);
+
+      server.send(
+        201,
+        F("application/json"),
+        response
+      );
+    }
+  );
+
+  server.on(
+    UriBraces("/api/status"),
+    HTTP_DELETE,
+    []() {
+      digitalWrite(LED, HIGH);
+      StaticJsonDocument<20> doc;
+
+      doc["status"] = "false";
+
+      String response = "";
+      serializeJson(doc, response);
+
+      server.send(
+        204,
+        F("application/json"),
+        response
+      );
+    }
+  );
+
   server.begin();
+  digitalWrite(LED, HIGH);
 }
 
 void loop () {
